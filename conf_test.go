@@ -1,4 +1,5 @@
 /**
+ * Unit test cases
  *
  * @author  chosen0ne(louzhenlin86@126.com)
  * @date    2014/11/04 15:06:47
@@ -305,4 +306,26 @@ func TestAll(t *testing.T) {
     if err == nil {
         t.Log("FloatArray =>", floatArray)
     }
+}
+
+func TestAllByPanicWay(t *testing.T) {
+    defer func() {
+        if err := recover(); err != nil {
+            t.Error("failed to load conf, err:", err)
+        }
+    }()
+
+    config := NewOrPanic("conf_sample.conf")
+    defer config.CloseOrPanic()
+
+    config.ParseOrPanic()
+    t.Log("items:")
+    for _, item := range config.Items() {
+        t.Log("\t", item.Key())
+    }
+
+    t.Log("StringItem=>", config.ToString("StringItem"))
+    t.Log("IntItem=>", config.ToInt("IntItem"))
+    t.Log("IntArray=>", config.ToIntArray("IntArray"))
+    t.Log("FloatArray=>", config.ToFloatArray("FloatArray"))
 }

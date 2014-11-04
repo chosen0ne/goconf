@@ -1,4 +1,18 @@
 /**
+ * A config parser for Golang. Support Int, Float, String and Array.
+ *      e.g. config file:
+ *          > StringItem: value
+ *          > IntItem: 1000
+ *          > FloatItem: 90.5
+ *          >
+ *          > [@IntArray]: 10 12 13
+ *          > [@IntArray1@,]: 1, 2, 3, 4, 5
+ *
+ *  The rule to define an Array:
+ *          1) [@ARRAY_KEY]
+ *          2) [@ARRAY_KEY@ELEMENT_SEPARATOR]
+ *      Default element separator is ' '.
+ *      And it's possible to specify a customed separator using the latter way.
  *
  * @author  chosen0ne(louzhenlin86@126.com)
  * @date    2014/11/03 15:03:49
