@@ -7,7 +7,7 @@
  * @date    2014/11/04 21:50:38
  */
 
-package conf
+package goconf
 
 
 func NewOrPanic(filePath string) *Conf {

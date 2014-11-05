@@ -5,7 +5,7 @@
  * @date    2014/11/04 15:06:47
  */
 
-package conf
+package goconf
 
 import (
     "testing"

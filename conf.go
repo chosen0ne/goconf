@@ -18,7 +18,7 @@
  * @date    2014/11/03 15:03:49
  */
 
-package conf
+package goconf
 
 import (
     "os"
