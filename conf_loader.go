@@ -1,6 +1,36 @@
 /**
- * Use to load config into a Config Object
- * @author  chosen0ne(louzhenlin86@126.com)
+ * Use to load config into a Config Object.
+ * Make sure field name of the object is same as the item name in config file.
+ * And the function 'Load' will read the config item by the type of each field,
+ * then fill it.
+ *
+ *      e.g. config file:
+ *          > StringItem: value
+ *          > IntItem: 1000
+ *          > FloatItem: 90.5
+ *          >
+ *          > [@IntArray]: 10 12 13
+ *          > [@IntArray1@,]: 1, 2, 3, 4, 5
+ *
+ *      And the corresponding Config Struct is:
+ *          type ConfigObj struct {
+ *              StringItem  string      // field must be public, or it can't be set by reflection
+ *              IntItem     int
+ *              FloatItem   float32
+ *              IntArray    []int64     // slice type of integer can only set int64, other int types aren't supported.
+ *              IntArray1   []float64   // slice type of float can only set float64, float32 isn't supported.
+ *          }
+ *
+ *          confObj := &ConfigObj{StringItem: "default value"} // default values can be set
+ *          // Because of using reflect package, the error emitted by 'panic' must 'recover'
+ *          defer func() {
+ *              if err := recover(); err != nil {
+ *                  // err recover
+ *              }
+ *          }
+ *          LoadOrPanic(confObj, "config.conf")
+ *
+ * @author  chosen0ne(louzhenlin86@126.com
  * @date    2014/11/05 11:50:13
  */
 
@@ -44,50 +74,9 @@ func Load(configObjPtr interface{}, configFile string) error {
     return nil
 }
 
-func LoadDefault(
-            configObjPtr interface{},
-            configFile string,
-            defaultConfigPtr interface{}) error {
-    configObj := reflect.ValueOf(configObjPtr).Elem()
-    defaultObj := reflect.ValueOf(defaultConfigPtr).Elem()
-
-    // Make sure same type
-    if configObj.Type() != defaultObj.Type() {
-        return errors.New("type of configObjPtr and defaultConfigPtr must be same")
-    }
-
-    if err := Load(configObjPtr, configFile); err != nil {
-        return err
-    }
-
-    fieldMetaInfo := configObj.Type()
-    for i := 0; i < configObj.NumField(); i++ {
-        fieldMeta := fieldMetaInfo.Field(i)
-        srcField := configObj.FieldByName(fieldMeta.Name)
-
-        // Not set by config
-        if reflect.ValueOf(srcField.Interface()) == reflect.Zero(srcField.Type()) ||
-                (srcField.Kind() == reflect.Slice && srcField.Len() == 0) {
-            distField := defaultObj.FieldByName(fieldMeta.Name)
-            srcField.Set(distField)
-        }
-    }
-
-    return nil
-}
-
 // ------- Panic mode ------- //
 func LoadOrPanic(configObjPtr interface{}, configFile string) {
     if err := Load(configObjPtr, configFile); err != nil {
-        panic(err)
-    }
-}
-
-func LoadDefaultOrPanic(
-            configObjPtr interface{},
-            configFile string,
-            defaultConfigPtr interface{}) {
-    if err := LoadDefault(configObjPtr, configFile, defaultConfigPtr); err != nil {
         panic(err)
     }
 }
