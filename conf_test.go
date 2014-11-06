@@ -174,7 +174,7 @@ func TestItemFloatArrayOk(t *testing.T) {
 // ------- Tests for Conf ------- //
 func genConf(s string) *Conf {
     in := bytes.NewBufferString(s)
-    return &Conf{in: in, curState: _PARSE_START, items: make(map[string]*Item)}
+    return &Conf{in: in, items: make(map[string]*Item)}
 }
 
 func TestConfParseOk1(t *testing.T) {

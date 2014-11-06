@@ -39,14 +39,7 @@ const (
     _DEFAULT_SEP = ' '
     _COMPOSITE_LEFT = '['
     _COMPOSITE_RIGHT = ']'
-
-    // Parse state
-    _PARSE_ERR = 0
-    _PARSE_START = 1
-    _PARSE_FOUND_KEY = 2
-    _PARSE_FOUND_VAL = 3
-    _PARSE_FOUND_KV = 4
-    _PARSE_DONE = 5
+    _COMMENT_TAG = '#'
 )
 
 type ParseState int
@@ -154,7 +147,6 @@ func New(filePath string) (*Conf, error) {
     conf := &Conf{}
     conf.filePath = filePath
     conf.items = make(map[string]*Item)
-    conf.curState = _PARSE_START
 
     if err := conf.openFile(); err != nil {
         return nil, err
@@ -165,64 +157,46 @@ func New(filePath string) (*Conf, error) {
 
 func (conf *Conf) Parse() error {
     buf := bufio.NewReader(conf.in)
-    var parseBuf []byte
-    var err error
-    var key string
-    var valStr string
     for {
-        switch conf.curState {
-        case _PARSE_START:
-            // Find KV Separator
-            parseBuf, err = buf.ReadBytes(_KV_SEP);
-
-            // Read a empty line, only contains ' \t\n'
-            if err == io.EOF && isSpaceBuf(parseBuf) {
-                conf.curState = _PARSE_DONE
-                continue
-            }
-
-            if err != nil {
-                conf.curState = _PARSE_ERR
-                continue
-            }
-            conf.curState = _PARSE_FOUND_KEY
-
-        case _PARSE_FOUND_KEY:
-            // Load Key string
-            key = extraceString(parseBuf)
-
-            // Read Value string
-            parseBuf, err = buf.ReadBytes(_NEWLINE);
-
-            // Found a non-empty value
-            if (err == io.EOF && !isSpaceBuf(parseBuf)) ||
-                    err == nil {
-                conf.curState = _PARSE_FOUND_VAL
-            } else {
-                conf.curState = _PARSE_ERR
-            }
-
-        case _PARSE_FOUND_VAL:
-            // Load Value string
-            valStr = extraceString(parseBuf)
-            conf.curState = _PARSE_FOUND_KV
-
-        case _PARSE_FOUND_KV:
-            rawKey := key
-            key = parseKey(key)
-            conf.items[key] = &Item{rawKey, valStr, key}
-            conf.curState = _PARSE_START
-
-        case _PARSE_ERR:
-            return err
-
-        case _PARSE_DONE:
+        line, err := buf.ReadString(_NEWLINE)
+        if len(line) == 0 && err == io.EOF {
             return nil
-
-        default:
-            return errors.New("not support parse state")
+        } else if err != nil && err != io.EOF {
+            return err
         }
+
+        // Trim left space chars
+        lineStr := strings.TrimLeft(line, _SPACE_CHARS)
+
+        // Found an empty line
+        if len(lineStr) == 0 {
+            continue
+        }
+
+        if lineStr[len(lineStr) - 1] == _NEWLINE {
+            lineStr = lineStr[:len(lineStr) - 1]
+        }
+
+        // Found an comment line
+        if lineStr[0] == _COMMENT_TAG {
+            continue
+        }
+
+        // Find 'Key : Value'
+        parts := strings.SplitN(lineStr, string(_KV_SEP), 2)
+        if len(parts) != 2 {
+            return errors.New("the line need a ':', line: " + lineStr)
+        }
+        rawKey := strings.Trim(parts[0], _SPACE_CHARS)
+        key := parseKey(rawKey)
+        val := strings.Trim(parts[1], _SPACE_CHARS)
+        if len(val) == 0 {
+            return errors.New("an empty value")
+        }
+
+        conf.items[key] = &Item{rawKey, val, key}
     }
+    return nil
 }
 
 func (conf *Conf) GetItem(key string) (*Item, error) {
