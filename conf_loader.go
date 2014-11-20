@@ -6,8 +6,8 @@
  *
  *      e.g. config file:
  *          > StringItem: value
- *          > IntItem: 1000
- *          > FloatItem: 90.5
+ *          > int_item: 1000
+ *          > float_item: 90.5
  *          >
  *          > [@IntArray]: 10 12 13
  *          > [@IntArray1@,]: 1, 2, 3, 4, 5
@@ -30,6 +30,12 @@
  *          }
  *          LoadOrPanic(confObj, "config.conf")
  *
+ *      The rule of mapping between field and config option is:
+ *          A field named 'AExampleField', the order of search the config option is
+ *          1. 'a_example_field'
+ *          2. 'aexamplefield'
+ *          3. 'AExampleField'
+ *
  * @author  chosen0ne(louzhenlin86@126.com
  * @date    2014/11/05 11:50:13
  */
@@ -39,6 +45,8 @@ package goconf
 import (
     "reflect"
     "errors"
+    "bytes"
+    "strings"
 )
 
 func Load(configObjPtr interface{}, configFile string) error {
@@ -92,32 +100,33 @@ func loadField(
         return errors.New("field not settable, field: " + fieldName)
     }
 
-    if !conf.HasItem(fieldName) {
+    optName := parseConfigOptName(fieldName, conf)
+    if optName == "" {
         return nil
     }
 
     // Fetch value from conf, and load Config Object
     kind := fieldValue.Kind()
     if isInt(kind) {
-        val, err := conf.GetInt(fieldName)
+        val, err := conf.GetInt(optName)
         if err != nil {
             return err
         }
         fieldValue.SetInt(val)
     } else if kind == reflect.Float32 || kind == reflect.Float64 {
-        val, err := conf.GetFloat(fieldName)
+        val, err := conf.GetFloat(optName)
         if err != nil {
             return err
         }
         fieldValue.SetFloat(val)
     } else if kind == reflect.String {
-        val, err := conf.GetString(fieldName)
+        val, err := conf.GetString(optName)
         if err != nil {
             return err
         }
         fieldValue.SetString(val)
     } else if kind == reflect.Slice {
-        if err := loadSliceField(configObj, fieldMeta, fieldValue, conf); err != nil {
+        if err := loadSliceField(configObj, fieldMeta, optName, fieldValue, conf); err != nil {
             return err
         }
     } else {
@@ -130,14 +139,15 @@ func loadField(
 func loadSliceField(
             configObj interface{},
             fieldMeta *reflect.StructField,
+            optName string,
             fieldValue *reflect.Value,
             conf *Conf) error {
-    fieldName := fieldMeta.Name
-    eleValue := fieldMeta.Type.Elem()
 
+    eleValue := fieldMeta.Type.Elem()
     eleKind := eleValue.Kind()
+
     if isInt(eleKind) {
-        vals, err := conf.GetIntArray(fieldName)
+        vals, err := conf.GetIntArray(optName)
         if err != nil {
             return err
         }
@@ -145,7 +155,7 @@ func loadSliceField(
             fieldValue.Set(reflect.Append(*fieldValue, reflect.ValueOf(val)))
         }
     } else if eleKind == reflect.Float32 || eleKind == reflect.Float64 {
-        vals, err := conf.GetFloatArray(fieldName)
+        vals, err := conf.GetFloatArray(optName)
         if err != nil {
             return err
         }
@@ -153,7 +163,7 @@ func loadSliceField(
             fieldValue.Set(reflect.Append(*fieldValue, reflect.ValueOf(val)))
         }
     } else if eleKind == reflect.String {
-        vals, err := conf.GetStringArray(fieldName)
+        vals, err := conf.GetStringArray(optName)
         if err != nil {
             return err
         }
@@ -178,4 +188,41 @@ func isInt(k reflect.Kind) bool {
     return false
 }
 
+// Map field to a config option.
+//  A field named 'AExampleField'
+//      1. a_example_field
+//      2. aexamplefield
+//      3. AExampleField
+func parseConfigOptName(field string, conf *Conf) string {
+    // 1. a_example_field
+    buf := bytes.Buffer{}
+    for _, c := range field {
+        if c >= 'A' && c <= 'Z' {
+            if buf.Len() != 0 {
+                buf.WriteByte('_')
+            }
+            buf.WriteString(strings.ToLower(string(c)))
+        } else {
+            buf.WriteRune(c)
+        }
+    }
+
+    f := string(buf.Bytes())
+    if conf.HasItem(f) {
+        return f
+    }
+
+    // 2. aexamplefield
+    f = strings.ToLower(field)
+    if conf.HasItem(f) {
+        return f
+    }
+
+    // 3. AExampleField
+    if conf.HasItem(field) {
+        return field
+    }
+
+    return ""
+}
 

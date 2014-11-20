@@ -202,7 +202,7 @@ func (conf *Conf) Parse() error {
 func (conf *Conf) GetItem(key string) (*Item, error) {
     item, ok := conf.items[key]
     if !ok {
-        return nil, errors.New("non-exist key")
+        return nil, errors.New("non-exist key: " + key)
     }
     return item, nil
 }
