@@ -9,16 +9,6 @@
 
 package goconf
 
-
-func NewOrPanic(filePath string) *Conf {
-    conf, err := New(filePath)
-    if err != nil {
-        panic(err)
-    }
-
-    return conf
-}
-
 func (conf *Conf) ParseOrPanic() {
     if err := conf.Parse(); err != nil {
         panic(err)
@@ -81,8 +71,3 @@ func (conf *Conf) ToStringArray(key string) []string {
     return val
 }
 
-func (conf *Conf) CloseOrPanic() {
-    if err := conf.Close(); err != nil {
-        panic(err)
-    }
-}

@@ -57,12 +57,7 @@ func Load(configObjPtr interface{}, configFile string) error {
     }
 
     // Create and Parse conf
-    conf, err := New(configFile)
-    if err != nil {
-        return err
-    }
-
-    defer conf.Close()
+    conf := New(configFile)
 
     if err := conf.Parse(); err != nil {
         return err

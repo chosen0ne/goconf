@@ -12,6 +12,7 @@ import (
     "reflect"
     "chosen0ne.com/utils"
     "bytes"
+    "bufio"
 )
 
 // ------- Tests for Item ------- //
@@ -82,54 +83,19 @@ func matchStringArray(output, expected []string) error {
 
 // Test for Array use default separator ' '
 func TestItemStringArrayOk1(t *testing.T) {
-    item := &Item{"[@key1]", "abc de fg h", ""}
+    item := &Item{"key1", "abc de fg h"}
     expected := []string {"abc", "de", "fg", "h"}
 
-    strArray, err := item.ToStringArray()
-    if err != nil {
-        t.Fatalf("failed to StringArray, err: %s", err)
-    }
+    strArray := item.ToStringArray()
 
-    err = matchStringArray(strArray, expected)
+    err := matchStringArray(strArray, expected)
     if err != nil {
         t.Errorf("not expected output, err: %s", err)
-    }
-}
-
-// Test for Array use customed separator ':'
-func TestItemStringArrayOk2(t *testing.T) {
-    item := &Item{"[@key2@:]", "abc:de:dff", ""}
-    expected := []string {"abc", "de", "dff"}
-
-    strArray, err := item.ToStringArray()
-    if err != nil {
-        t.Fatalf("failed to StringArray, err: %s", err)
-    }
-
-    err = matchStringArray(strArray, expected)
-    if err != nil {
-        t.Errorf("not expected output, err: %s", err)
-    }
-}
-
-func TestItemStringArrayErr1(t *testing.T) {
-    item := &Item{"NotArrayKey", "xxxjjj", ""}
-    val, err := item.ToStringArray()
-    if err == nil || val != nil {
-        t.Errorf("need a 'not a Array Item' error")
-    }
-}
-
-func TestItemStringArrayErr2(t *testing.T) {
-    item := &Item{"[@InvaliSep@###]", "xx", ""}
-    val, err := item.ToStringArray()
-    if err == nil || val != nil {
-        t.Errorf("need a 'Array sep can only set to one char' error")
     }
 }
 
 func TestItemIntArrayOk(t *testing.T) {
-    item := &Item{"[@IntArray]", "12 23 44 55", ""}
+    item := &Item{"IntArray", "12 23 44 55"}
     expected := []int64 {12, 23, 44, 55}
 
     intArray, err := item.ToIntArray()
@@ -150,7 +116,7 @@ func TestItemIntArrayOk(t *testing.T) {
 }
 
 func TestItemFloatArrayOk(t *testing.T) {
-    item := &Item{"[@FloatArray@;]", "1.1; 1.2; 12.33", ""}
+    item := &Item{"FloatArray", "1.1 1.2 12.33"}
     expected := []float64 {1.1, 1.2, 12.33}
 
     floatArray, err := item.ToFloatArray()
@@ -172,92 +138,56 @@ func TestItemFloatArrayOk(t *testing.T) {
 
 
 // ------- Tests for Conf ------- //
-func genConf(s string) *Conf {
-    in := bytes.NewBufferString(s)
-    return &Conf{in: in, items: make(map[string]*Item)}
+func genConf(s string) (*Conf, *bufio.Reader) {
+    buf := bytes.NewBufferString(s)
+    return New(""), bufio.NewReader(buf)
 }
 
 func TestConfParseOk1(t *testing.T) {
-    conf := genConf("item1: value1\n\n\nitem2: value2")
+    conf, buf := genConf("item1: value1\n\n\nitem2: value2")
 
-    if err := conf.Parse(); err != nil {
+    if err := conf._parse(buf); err != nil {
         t.Errorf("failed to parse, err: %s", err)
     }
 }
 
 func TestConfParseOk2(t *testing.T) {
-    conf := genConf("[@int@;]: a;b;c\n[@int]: 1 2 3")
+    conf, buf := genConf("[@int@;]: a;b;c\n[@int]: 1 2 3")
 
-    if err := conf.Parse(); err != nil {
+    if err := conf._parse(buf); err != nil {
         t.Errorf("failed to parse, err: %s", err)
     }
 }
 
 // Partial Key, without value
 func TestConfParseErr1(t *testing.T) {
-    conf := genConf("item1: valu\nitem1jfak")
+    conf, buf := genConf("item1: valu\nitem1jfak")
 
-    if err := conf.Parse(); err == nil {
+    if err := conf._parse(buf); err == nil {
         t.Errorf("need a EOF error")
     }
 }
 
 func TestConfParseErr2(t *testing.T) {
-    conf := genConf("item1:  ")
+    conf, buf := genConf("item1:  ")
 
-    if err := conf.Parse(); err == nil {
+    if err := conf._parse(buf); err == nil {
         t.Errorf("need a EOF error")
     }
 }
 
-func TestConfParseKeyOk1(t *testing.T) {
-    k := "a"
-    expected := "a"
-
-    if output := parseKey(k); output != expected {
-        t.Errorf("output is not expected, output: %s, expected: %s",
-                output, expected)
-    }
-}
-
-func TestConfParseKeyOk2(t *testing.T) {
-    k := "[xxxx]"
-    expected := "[xxxx]"
-    if output := parseKey(k); output != expected {
-        t.Errorf("output is not expected, output: %s, expected: %s",
-                output, expected)
-    }
-}
-
-func TestConfParseKeyOk3(t *testing.T) {
-    k := "[$anfa$1]"
-    expected := "anfa"
-    if output := parseKey(k); output != expected {
-        t.Errorf("output is not expected, output: %s, expected: %s",
-                output, expected)
-    }
-}
-
-func TestConfParseKeyOk4(t *testing.T) {
-    k := "[$kkkk]"
-    expected := "kkkk"
-    if output := parseKey(k); output != expected {
-        t.Errorf("output is not expected, output: %s, expected: %s",
-                output, expected)
-    }
-}
 
 func TestConfItemsOk(t *testing.T) {
-    conf := genConf("a:b\nc:d\ne:f\ng:h")
+    conf, buf := genConf("a:b\nc:d\ne:f\ng:h")
     expected := map[string]int {"a": 1, "c": 1, "e": 1, "g": 1}
 
-    if err := conf.Parse(); err != nil {
+    if err := conf._parse(buf); err != nil {
         t.Errorf("failed to parse, err: %s", err)
     }
 
     for _, item := range conf.Items() {
         if _, ok := expected[item.Key()]; !ok {
-            t.Errorf("extra key %s ", item.Key())
+            t.Errorf("extra key '%s'", item.Key())
         }
     }
 
@@ -269,13 +199,7 @@ func TestConfItemsOk(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-    config, err := New("conf_sample.conf")
-    if err != nil {
-        t.Error("failed to New Conf")
-        return
-    }
-
-    defer config.Close()
+    config := New("conf_sample.conf")
 
     if err := config.Parse(); err != nil {
         t.Error("failed to Parse, err:", err)
@@ -315,8 +239,7 @@ func TestAllByPanicWay(t *testing.T) {
         }
     }()
 
-    config := NewOrPanic("conf_sample.conf")
-    defer config.CloseOrPanic()
+    config := New("conf_sample.conf")
 
     config.ParseOrPanic()
     t.Log("items:")
@@ -328,4 +251,21 @@ func TestAllByPanicWay(t *testing.T) {
     t.Log("IntItem=>", config.ToInt("IntItem"))
     t.Log("IntArray=>", config.ToIntArray("IntArray"))
     t.Log("FloatArray=>", config.ToFloatArray("FloatArray"))
+}
+
+func TestSection(t *testing.T) {
+    defer func() {
+        if err := recover(); err != nil {
+            t.Error("failed to load conf, err:", err)
+        }
+    }()
+
+    config := New("conf_sample.conf")
+    config.ParseOrPanic()
+    config.Section("Section1")
+
+    t.Log(config)
+    for _, item := range config.Items() {
+        t.Log(item)
+    }
 }
