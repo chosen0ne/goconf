@@ -7,78 +7,78 @@
 package goconf
 
 import (
-    "strings"
-    "strconv"
-    "github.com/chosen0ne/goutils"
+	"github.com/chosen0ne/goutils"
+	"strconv"
+	"strings"
 )
 
 // ------- Item ------- //
 type Item struct {
-    key     string
-    val     string
+	key string
+	val string
 }
 
 func (item *Item) Key() string {
-    return item.key
+	return item.key
 }
 
 func (item *Item) String() string {
-    return item.key + "=>" + item.val
+	return item.key + "=>" + item.val
 }
 
 func (item *Item) ToInt() (int64, error) {
-    return strconv.ParseInt(item.val, 10, 64)
+	return strconv.ParseInt(item.val, 10, 64)
 }
 
 func (item *Item) ToString() string {
-    return item.val
+	return item.val
 }
 
 func (item *Item) ToFloat() (float64, error) {
-    return strconv.ParseFloat(item.val, 64)
+	return strconv.ParseFloat(item.val, 64)
 }
 
 func (item *Item) ToIntArray() ([]int64, error) {
-    eleStr := item.ToStringArray()
+	eleStr := item.ToStringArray()
 
-    values := make([]int64, len(eleStr))
-    for idx, ele := range eleStr {
-        ele = strings.Trim(ele, _SPACE_CHARS)
-        val, err := strconv.ParseInt(ele, 10, 64)
-        if err != nil {
-            return nil, goutils.WrapErr(err)
-        }
-        values[idx] = val
-    }
+	values := make([]int64, len(eleStr))
+	for idx, ele := range eleStr {
+		ele = strings.Trim(ele, _SPACE_CHARS)
+		val, err := strconv.ParseInt(ele, 10, 64)
+		if err != nil {
+			return nil, goutils.WrapErr(err)
+		}
+		values[idx] = val
+	}
 
-    return values, nil
+	return values, nil
 }
 
 func (item *Item) ToFloatArray() ([]float64, error) {
-    eleStr:= item.ToStringArray()
+	eleStr := item.ToStringArray()
 
-    values := make([]float64, len(eleStr))
-    for idx, ele := range eleStr {
-        ele = strings.Trim(ele, _SPACE_CHARS)
-        val, err := strconv.ParseFloat(ele, 64)
-        if err != nil {
-            return nil, goutils.WrapErr(err)
-        }
-        values[idx] = val
-    }
+	values := make([]float64, len(eleStr))
+	for idx, ele := range eleStr {
+		ele = strings.Trim(ele, _SPACE_CHARS)
+		val, err := strconv.ParseFloat(ele, 64)
+		if err != nil {
+			return nil, goutils.WrapErr(err)
+		}
+		values[idx] = val
+	}
 
-    return values, nil
+	return values, nil
 }
 
 func (item *Item) ToStringArray() []string {
-    parts := strings.Split(item.val, string(elementSep))
+	parts := strings.Split(item.val, string(elementSep))
 
-    var eles []string
-    for _, p := range parts {
-        if p != "" {
-            eles = append(eles, strings.Trim(p, _SPACE_CHARS))
-        }
-    }
+	var eles []string
+	for _, p := range parts {
+		if p != "" {
+			eles = append(eles, strings.Trim(p, _SPACE_CHARS))
+		}
+	}
 
-    return eles
+	return eles
 }

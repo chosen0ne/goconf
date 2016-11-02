@@ -10,6 +10,9 @@ A config parser for Golang. Config item with Int, Float, String and Array Type i
      >
      > [@IntArray]: 10 12 13
      > [@IntArray1@,]: 1, 2, 3, 4, 5
+     > [Section1]
+     >      int_val: 100
+     >      string_val: vvv
 
 ####Note:
     Int, Float and String item is easy to specify, just using format of 'key: value'.
