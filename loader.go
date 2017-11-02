@@ -41,9 +41,10 @@
  *
  *      The rule of mapping between field and config option is:
  *          A field named 'AExampleField', the order of search the config option is
- *          1. 'a_example_field'
- *          2. 'aexamplefield'
- *          3. 'AExampleField'
+ *          1. 'a-example-field'
+ *          2. 'a_example_field'
+ *          3. 'aexamplefield'
+ *          4. 'AExampleField'
  *
  * @author  chosen0ne(louzhenlin86@126.com
  * @date    2014/11/05 11:50:13
@@ -54,6 +55,7 @@ package goconf
 import (
 	"bytes"
 	"errors"
+	"github.com/chosen0ne/goutils"
 	"reflect"
 	"strings"
 )
@@ -96,9 +98,9 @@ func loadField(
 		return errors.New("field not settable, field: " + fieldName)
 	}
 
-	optName := parseConfigOptName(fieldName, conf)
-	if optName == "" {
-		return nil
+	optName, err := parseConfigOptName(fieldName, conf)
+	if err != nil {
+		return err
 	}
 
 	// Fetch value from conf, and load Config Object
@@ -198,38 +200,61 @@ func isInt(k reflect.Kind) bool {
 
 // Map field to a config option.
 //  A field named 'AExampleField' is searched in order of:
-//      1. a_example_field
-//      2. aexamplefield
-//      3. AExampleField
-func parseConfigOptName(field string, conf *Conf) string {
-	// 1. a_example_field
+//      1. a-example-field
+//      2. a_example_field
+//      3. aexamplefield
+//      4. AExampleField
+func parseConfigOptName(field string, conf *Conf) (string, error) {
+	// 1. a-example-field
+	f, err := upperToLower(field, '-')
+	if err != nil {
+		return "", err
+	}
+	if conf.HasItem(f) || conf.HasSection(f) {
+		return f, nil
+	}
+
+	// 2. a_example_field
+	f, err = upperToLower(field, '_')
+	if err != nil {
+		return "", err
+	}
+	if conf.HasItem(f) || conf.HasSection(f) {
+		return f, nil
+	}
+
+	// 3. aexamplefield
+	f = strings.ToLower(field)
+	if conf.HasItem(f) || conf.HasSection(f) {
+		return f, nil
+	}
+
+	// 4. AExampleField
+	if conf.HasItem(field) || conf.HasSection(field) {
+		return field, nil
+	}
+
+	return "", goutils.NewErr("new config option for %s", field)
+}
+
+func upperToLower(field string, sep byte) (string, error) {
 	buf := bytes.Buffer{}
 	for _, c := range field {
 		if c >= 'A' && c <= 'Z' {
 			if buf.Len() != 0 {
-				buf.WriteByte('_')
+				if err := buf.WriteByte(sep); err != nil {
+					return "", err
+				}
 			}
-			buf.WriteString(strings.ToLower(string(c)))
+			if _, err := buf.WriteString(strings.ToLower(string(c))); err != nil {
+				return "", err
+			}
 		} else {
-			buf.WriteRune(c)
+			if _, err := buf.WriteRune(c); err != nil {
+				return "", err
+			}
 		}
 	}
 
-	f := string(buf.Bytes())
-	if conf.HasItem(f) || conf.HasSection(f) {
-		return f
-	}
-
-	// 2. aexamplefield
-	f = strings.ToLower(field)
-	if conf.HasItem(f) || conf.HasSection(f) {
-		return f
-	}
-
-	// 3. AExampleField
-	if conf.HasItem(field) || conf.HasSection(field) {
-		return field
-	}
-
-	return ""
+	return string(buf.Bytes()), nil
 }
