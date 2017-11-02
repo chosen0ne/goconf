@@ -145,7 +145,7 @@ func genConf(s string) (*Conf, *bufio.Reader) {
 func TestConfParseOk1(t *testing.T) {
 	conf, buf := genConf("item1: value1\n\n\nitem2: value2")
 
-	if err := conf._parse(buf); err != nil {
+	if err := conf.parse(buf); err != nil {
 		t.Errorf("failed to parse, err: %s", err)
 	}
 }
@@ -153,7 +153,7 @@ func TestConfParseOk1(t *testing.T) {
 func TestConfParseOk2(t *testing.T) {
 	conf, buf := genConf("[@int@;]: a;b;c\n[@int]: 1 2 3")
 
-	if err := conf._parse(buf); err != nil {
+	if err := conf.parse(buf); err != nil {
 		t.Errorf("failed to parse, err: %s", err)
 	}
 }
@@ -162,7 +162,7 @@ func TestConfParseOk2(t *testing.T) {
 func TestConfParseErr1(t *testing.T) {
 	conf, buf := genConf("item1: valu\nitem1jfak")
 
-	if err := conf._parse(buf); err == nil {
+	if err := conf.parse(buf); err == nil {
 		t.Errorf("need a EOF error")
 	}
 }
@@ -170,7 +170,7 @@ func TestConfParseErr1(t *testing.T) {
 func TestConfParseErr2(t *testing.T) {
 	conf, buf := genConf("item1:  ")
 
-	if err := conf._parse(buf); err == nil {
+	if err := conf.parse(buf); err == nil {
 		t.Errorf("need a EOF error")
 	}
 }
@@ -179,7 +179,7 @@ func TestConfItemsOk(t *testing.T) {
 	conf, buf := genConf("a:b\nc:d\ne:f\ng:h")
 	expected := map[string]int{"a": 1, "c": 1, "e": 1, "g": 1}
 
-	if err := conf._parse(buf); err != nil {
+	if err := conf.parse(buf); err != nil {
 		t.Errorf("failed to parse, err: %s", err)
 	}
 
@@ -230,40 +230,35 @@ func TestAll(t *testing.T) {
 	}
 }
 
-func TestAllByPanicWay(t *testing.T) {
-	defer func() {
-		if err := recover(); err != nil {
-			t.Error("failed to load conf, err:", err)
-		}
-	}()
-
-	config := New("conf_sample.conf")
-
-	config.ParseOrPanic()
-	t.Log("items:")
-	for _, item := range config.Items() {
-		t.Log("\t", item.Key())
-	}
-
-	t.Log("StringItem=>", config.ToString("StringItem"))
-	t.Log("IntItem=>", config.ToInt("IntItem"))
-	t.Log("IntArray=>", config.ToIntArray("IntArray"))
-	t.Log("FloatArray=>", config.ToFloatArray("FloatArray"))
-}
-
 func TestSection(t *testing.T) {
-	defer func() {
-		if err := recover(); err != nil {
-			t.Error("failed to load conf, err:", err)
-		}
-	}()
-
 	config := New("conf_sample.conf")
-	config.ParseOrPanic()
+	if err := config.Parse(); err != nil {
+		t.Errorf("failed to parse, err: %s", err.Error())
+	}
 	config.Section("Section1")
 
 	t.Log(config)
 	for _, item := range config.Items() {
 		t.Log(item)
+	}
+}
+
+type sub_section struct {
+	A int
+	B []string
+}
+
+func TestSectionLoad(t *testing.T) {
+	configObj := struct {
+		IntItem  int
+		Section1 sub_section
+	}{}
+
+	if err := Load(&configObj, "conf_sample.conf"); err != nil {
+		t.Errorf("failed to load conf, err: %s", err.Error())
+	}
+
+	if configObj.Section1.A != 12 {
+		t.Error(configObj.Section1.A)
 	}
 }

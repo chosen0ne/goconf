@@ -54,11 +54,11 @@ package goconf
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 )
 
+// Load will set the config object by a file.
 func Load(configObjPtr interface{}, configFile string) error {
 	// Settable?
 	configObj := reflect.ValueOf(configObjPtr).Elem()
@@ -84,13 +84,6 @@ func Load(configObjPtr interface{}, configFile string) error {
 	}
 
 	return nil
-}
-
-// ------- Panic mode ------- //
-func LoadOrPanic(configObjPtr interface{}, configFile string) {
-	if err := Load(configObjPtr, configFile); err != nil {
-		panic(err)
-	}
 }
 
 func loadField(
@@ -134,11 +127,10 @@ func loadField(
 		}
 	} else if kind == reflect.Struct {
 		conf.Section(optName)
-		fmt.Println("section, A")
-		innerFiledType := fieldValue.Type()
+		innerFieldType := fieldValue.Type()
 		for j := 0; j < fieldValue.NumField(); j++ {
 			innerFieldVal := fieldValue.Field(j)
-			innerFieldMeta := innerFiledType.Field(j)
+			innerFieldMeta := innerFieldType.Field(j)
 			if err := loadField(&innerFieldMeta, &innerFieldVal, conf); err != nil {
 				return err
 			}

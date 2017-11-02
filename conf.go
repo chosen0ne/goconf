@@ -22,7 +22,6 @@ package goconf
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/chosen0ne/goutils"
 	"io"
 	"os"
@@ -45,21 +44,38 @@ var (
 	elementSep byte
 )
 
-type _Section map[string]*Item
+// 'section' is a group of config items. It can be used to
+// group the config items into a logic unit.
+//
+// NOTICE: In a config file, all items which aren't belonged
+//		to any sections are in the global section by default.
+type section map[string]*Item
 
-// ------- Conf ------- //
+func newSection() section {
+	return make(map[string]*Item)
+}
+
+// A Conf object can be parsed from a config file. Config items
+// can be grouped into sections, and all the items not belonged
+// to any sections are put in the global section.
+// By using sections, a config file can be loaded into a config
+// object which has struct fields.
+// NOTICE: In a config file, all the sections must be put at the
+//		end of the file, as a section only has a start tag. So
+//		any global config items between sections will not be
+//		identified as global items.
 type Conf struct {
-	filePath string
-	sections map[string]_Section
-	eleSep   byte
-	cur      _Section // current section
+	filePath string             // path to the config file
+	sections map[string]section // all sections in a config file
+	eleSep   byte               // element seperator of array item
+	cur      section            // current section
 }
 
 func New(filePath string) *Conf {
 	conf := &Conf{}
 	conf.filePath = filePath
-	conf.sections = make(map[string]_Section)
-	conf.cur = make(map[string]*Item)
+	conf.sections = make(map[string]section)
+	conf.cur = newSection()
 	conf.sections[_GLOBAL] = conf.cur
 
 	return conf
@@ -75,7 +91,7 @@ func (conf *Conf) Parse() error {
 	defer f.Close()
 	buf := bufio.NewReader(f)
 
-	if err := conf._parse(buf); err != nil {
+	if err := conf.parse(buf); err != nil {
 		return err
 	}
 
@@ -84,7 +100,7 @@ func (conf *Conf) Parse() error {
 	return nil
 }
 
-func (conf *Conf) _parse(buf *bufio.Reader) error {
+func (conf *Conf) parse(buf *bufio.Reader) error {
 	for {
 		line, err := buf.ReadString(_NEWLINE)
 		if len(line) == 0 && err == io.EOF {
@@ -117,7 +133,8 @@ func (conf *Conf) _parse(buf *bufio.Reader) error {
 				return goutils.NewErr("section '%s' already exist", sectionName)
 			}
 
-			conf.cur = make(map[string]*Item)
+			// A new section, the following config items belongs to the section
+			conf.cur = newSection()
 			conf.sections[sectionName] = conf.cur
 		} else {
 			// Find 'Key : Value'
@@ -217,8 +234,7 @@ func (conf *Conf) GetStringArray(key string) ([]string, error) {
 }
 
 func (conf *Conf) Section(name string) error {
-	section, ok := conf.sections[name]
-	if ok {
+	if section, ok := conf.sections[name]; ok {
 		conf.cur = section
 		return nil
 	}
@@ -235,22 +251,9 @@ func (conf *Conf) SetGlobalSection() {
 	conf.cur = conf.sections[_GLOBAL]
 }
 
-func (conf *Conf) LoadSection(name string, configObj interface{}) error {
-	section := conf.sections[name]
-	if section == nil {
-		return goutils.NewErr("no section named '%s'", name)
-	}
-
-	return nil
-}
-
 // SetElementSep: set the separator of elements in an array
 func SetElementSep(sep byte) {
 	elementSep = sep
-}
-
-func init() {
-	elementSep = _DEFAULT_SEP
 }
 
 func isSection(line string) bool {
@@ -259,4 +262,8 @@ func isSection(line string) bool {
 	}
 
 	return false
+}
+
+func init() {
+	elementSep = _DEFAULT_SEP
 }
