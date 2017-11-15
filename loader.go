@@ -119,6 +119,16 @@ func loadField(
 			return err
 		}
 		fieldValue.SetFloat(val)
+	} else if kind == reflect.Bool {
+		val, err := conf.GetString(optName)
+		if err != nil {
+			return err
+		}
+		lowerVal := strings.ToLower(val)
+		if lowerVal != "true" && lowerVal != "false" {
+			return goutils.NewErr("bool config option must be 'True' of 'False'")
+		}
+		fieldValue.SetBool("true" == lowerVal)
 	} else if kind == reflect.String {
 		val, err := conf.GetString(optName)
 		if err != nil {

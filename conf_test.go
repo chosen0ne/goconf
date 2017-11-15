@@ -246,6 +246,8 @@ func TestSection(t *testing.T) {
 type sub_section struct {
 	A int
 	B []string
+	C bool
+	D bool
 }
 
 func TestSectionLoad(t *testing.T) {
@@ -260,5 +262,13 @@ func TestSectionLoad(t *testing.T) {
 
 	if configObj.Section1.A != 12 {
 		t.Error(configObj.Section1.A)
+	}
+
+	if !configObj.Section1.C {
+		t.Errorf("C in Section error")
+	}
+
+	if configObj.Section1.D {
+		t.Errorf("D in Section error")
 	}
 }
