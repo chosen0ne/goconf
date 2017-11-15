@@ -100,7 +100,9 @@ func loadField(
 
 	optName, err := parseConfigOptName(fieldName, conf)
 	if err != nil {
-		return err
+		// no config option mapped to the field.
+		// just return, and field can be set by a default value
+		return nil
 	}
 
 	// Fetch value from conf, and load Config Object
